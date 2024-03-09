@@ -21,6 +21,37 @@
 Job *jobs[100];
 int job_ids[110];
 
+void handler(int sig)
+{
+    pid_t chld;
+    int status;
+    switch (sig)
+    {
+    case SIGCHLD:
+        while ((chld = waitpid(-1, &status, WNOHANG | WCONTINUED | WUNTRACED)) > 0)
+        {
+            if (WIFCONTINUED(status))
+            {
+                /* child state changed from STOPPED to RUNNING (received SIGCONT) */
+                printf("Child w/ pid %d continued\n", chld);
+            }
+            else if (WIFSTOPPED(status))
+            {
+                /* child state changed to STOPPED (received SIGSTOP, SIGTTOU, or SIGTTIN) */
+                printf("Child w/ pid %d stopped\n", chld);
+            }
+            else
+            {
+                /* waited on terminated child */
+            }
+        }
+        break;
+    default:
+        printf("Other signal\n");
+        break;
+    }
+}
+
 void print_banner()
 {
     printf("                    ________   \n");
@@ -148,8 +179,10 @@ static int is_possible(Parse *P)
         }
 
         if (!strcmp(T->cmd, "exit"))
+        {
             printf("Exiting...\n");
-        exit(EXIT_SUCCESS);
+            exit(EXIT_SUCCESS);
+        }
     }
 
     if (P->infile)
@@ -185,11 +218,11 @@ void execute_tasks(Parse *P, int job_id)
     int in, out;
 
     in = get_infile(P);
-
     for (t = 0; t < P->ntasks - 1; t++)
     {
         pipe(fd);
         jobs[job_id]->pids[t] = fork();
+
         setpgid(jobs[job_id]->pids[t], jobs[job_id]->pids[0]);
 
         if (!jobs[job_id]->pids[t])
@@ -206,13 +239,20 @@ void execute_tasks(Parse *P, int job_id)
     out = get_outfile(P);
 
     jobs[job_id]->pids[t] = fork();
+
     setpgid(jobs[job_id]->pids[t], jobs[job_id]->pids[0]);
+
     if (!jobs[job_id]->pids[t])
         run(&P->tasks[t], in, out);
 
+    signal(SIGTTOU, SIG_IGN);
+    tcsetpgrp(STDIN_FILENO, jobs[job_id]->pids[0]);
+    signal(SIGTTOU, SIG_DFL);
+    
     for (t = 0; t < P->ntasks; t++)
+    {
         waitpid(jobs[job_id]->pids[t], NULL, 0);
-
+    }
     close_safe(in);
 }
 
@@ -222,6 +262,12 @@ int main(int argc, char **argv)
     Parse *P;
     int next_id;
     memset(job_ids, 0, 100 * sizeof(int));
+
+    signal(SIGCHLD, handler);
+    signal(SIGSTOP, handler);
+    signal(SIGQUIT, handler);
+    signal(SIGTERM, handler);
+    signal(SIGKILL, handler);
 
     print_banner();
 
