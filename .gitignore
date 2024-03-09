@@ -1,0 +1,7 @@
+**/*.txt
+!README.txt
+**/*.log
+**/o
+**/*.zip
+**/.nfs*
+**/.o
