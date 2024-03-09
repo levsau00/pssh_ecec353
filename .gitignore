@@ -5,6 +5,8 @@
 **/.nfs*
 **/*.o
 pssh
+.vscode
+
 
 !README.txt
 !**/run
