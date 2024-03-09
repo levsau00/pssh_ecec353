@@ -40,11 +40,24 @@ void handler(int sig)
                 /* child state changed to STOPPED (received SIGSTOP, SIGTTOU, or SIGTTIN) */
                 printf("Child w/ pid %d stopped\n", chld);
             }
+            else if (WIFEXITED(status))
+            {
+                /* child exited normally */
+                printf("Child w/ pid %d exited\n", chld);
+            }
+            else if (WIFSIGNALED(status))
+            {
+                /* child exited due to uncaught signal */
+                printf("Child w/ pid %d killed\n", chld);
+            }
             else
             {
                 /* waited on terminated child */
             }
         }
+        break;
+    case SIGTTOU:
+        printf("SIGTTOU\n");
         break;
     default:
         printf("Other signal\n");
@@ -206,7 +219,16 @@ static int is_possible(Parse *P)
 
     return 1;
 }
-
+void print_job_pids(Job *job)
+{
+    printf("job pids:");
+    unsigned int t;
+    for (t = 0; t < job->npids; t++)
+    {
+        printf("%d ", job->pids[t]);
+    }
+    printf("\n");
+}
 /* Called upon receiving a successful parse.
  * This function is responsible for cycling through the
  * tasks, and forking, executing, etc as necessary to get
@@ -224,6 +246,12 @@ void execute_tasks(Parse *P, int job_id)
         jobs[job_id]->pids[t] = fork();
 
         setpgid(jobs[job_id]->pids[t], jobs[job_id]->pids[0]);
+        if (jobs[job_id]->pids[t])
+        {
+            signal(SIGTTOU, SIG_IGN);
+            tcsetpgrp(STDIN_FILENO, jobs[job_id]->pids[0]);
+            signal(SIGTTOU, SIG_DFL);
+        }
 
         if (!jobs[job_id]->pids[t])
         {
@@ -238,17 +266,21 @@ void execute_tasks(Parse *P, int job_id)
 
     out = get_outfile(P);
 
+    // print_job_pids(jobs[job_id]);
     jobs[job_id]->pids[t] = fork();
-
+    // print_job_pids(jobs[job_id]);
+        
     setpgid(jobs[job_id]->pids[t], jobs[job_id]->pids[0]);
+    if (jobs[job_id]->pids[t])
+    {
+        signal(SIGTTOU, SIG_IGN);
+        tcsetpgrp(STDIN_FILENO, jobs[job_id]->pids[0]);
+        signal(SIGTTOU, SIG_DFL);
+    }
 
     if (!jobs[job_id]->pids[t])
         run(&P->tasks[t], in, out);
 
-    signal(SIGTTOU, SIG_IGN);
-    tcsetpgrp(STDIN_FILENO, jobs[job_id]->pids[0]);
-    signal(SIGTTOU, SIG_DFL);
-    
     for (t = 0; t < P->ntasks; t++)
     {
         waitpid(jobs[job_id]->pids[t], NULL, 0);
@@ -268,6 +300,8 @@ int main(int argc, char **argv)
     signal(SIGQUIT, handler);
     signal(SIGTERM, handler);
     signal(SIGKILL, handler);
+    signal(SIGTTOU, handler);
+    signal(SIGTTIN, handler);
 
     print_banner();
 
