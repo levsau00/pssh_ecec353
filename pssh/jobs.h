@@ -15,6 +15,7 @@ typedef struct
 {
     char *name;
     pid_t *pids;
+    int completed;
     unsigned int npids;
     pid_t pgid;
     JobStatus status;
@@ -22,4 +23,13 @@ typedef struct
 
 Job *new_job(char *name, Parse *P);
 int next_jid(int *job_ids);
+int find_jid(Job *jobs[], pid_t pid);
+int job_done(Job *job);
+
+void print_bg_job(Job *job, int jid);
+
+void free_job(Job *job);
+void free_job_safe(Job **jobs, Job *job, int *job_ids);
+
+
 #endif /* _jobs_h_ */
