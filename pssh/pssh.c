@@ -21,10 +21,24 @@
 Job *jobs[100];
 int job_ids[110];
 
+void set_fg_pgrp(pid_t pgrp)
+{
+    void (*sav)(int sig);
+
+    if (pgrp == 0)
+        pgrp = getpgrp();
+
+    sav = signal(SIGTTOU, SIG_IGN);
+    tcsetpgrp(STDOUT_FILENO, pgrp);
+    signal(SIGTTOU, sav);
+}
+
 void handler(int sig)
 {
     pid_t chld;
     int status;
+
+
     switch (sig)
     {
     case SIGCHLD:
@@ -33,34 +47,40 @@ void handler(int sig)
             if (WIFCONTINUED(status))
             {
                 /* child state changed from STOPPED to RUNNING (received SIGCONT) */
-                printf("Child w/ pid %d continued\n", chld);
+                set_fg_pgrp(0);
+                printf("Parent: Child %d continued!\n", chld);
             }
             else if (WIFSTOPPED(status))
             {
                 /* child state changed to STOPPED (received SIGSTOP, SIGTTOU, or SIGTTIN) */
-                printf("Child w/ pid %d stopped\n", chld);
+                set_fg_pgrp(0);
+                printf("Parent: Child %d stopped!\n", chld);
             }
             else if (WIFEXITED(status))
             {
                 /* child exited normally */
-                printf("Child w/ pid %d exited\n", chld);
+                set_fg_pgrp(0);
+                printf("Parent: Child %d exited!\n", chld);
             }
             else if (WIFSIGNALED(status))
             {
                 /* child exited due to uncaught signal */
-                printf("Child w/ pid %d killed\n", chld);
+                set_fg_pgrp(0);
+                printf("Parent: Child %d uncaught signal!\n", chld);
             }
             else
             {
                 /* waited on terminated child */
+                set_fg_pgrp(0);
+                printf("Parent: Child %d else!\n", chld);
             }
         }
         break;
     case SIGTTOU:
-        printf("SIGTTOU\n");
+        // printf("SIGTTOU\n");
         break;
     default:
-        printf("Other signal\n");
+        // printf("Other signal\n");
         break;
     }
 }
@@ -238,6 +258,7 @@ void execute_tasks(Parse *P, int job_id)
     unsigned int t;
     int fd[2];
     int in, out;
+    void (*sav)(int sig);
 
     in = get_infile(P);
     for (t = 0; t < P->ntasks - 1; t++)
@@ -246,11 +267,11 @@ void execute_tasks(Parse *P, int job_id)
         jobs[job_id]->pids[t] = fork();
 
         setpgid(jobs[job_id]->pids[t], jobs[job_id]->pids[0]);
-        if (jobs[job_id]->pids[t])
+        if (jobs[job_id]->pids[t] && P->ntasks == 0)
         {
-            signal(SIGTTOU, SIG_IGN);
-            tcsetpgrp(STDIN_FILENO, jobs[job_id]->pids[0]);
-            signal(SIGTTOU, SIG_DFL);
+            sav = signal(SIGTTOU, SIG_IGN);
+            tcsetpgrp(STDOUT_FILENO, jobs[job_id]->pids[0]);
+            signal(SIGTTOU, sav);
         }
 
         if (!jobs[job_id]->pids[t])
@@ -266,17 +287,10 @@ void execute_tasks(Parse *P, int job_id)
 
     out = get_outfile(P);
 
-    // print_job_pids(jobs[job_id]);
     jobs[job_id]->pids[t] = fork();
-    // print_job_pids(jobs[job_id]);
         
     setpgid(jobs[job_id]->pids[t], jobs[job_id]->pids[0]);
-    if (jobs[job_id]->pids[t])
-    {
-        signal(SIGTTOU, SIG_IGN);
-        tcsetpgrp(STDIN_FILENO, jobs[job_id]->pids[0]);
-        signal(SIGTTOU, SIG_DFL);
-    }
+    set_fg_pgrp(jobs[job_id]->pids[0]);
 
     if (!jobs[job_id]->pids[t])
         run(&P->tasks[t], in, out);
