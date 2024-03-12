@@ -19,7 +19,7 @@
 #define READ_SIDE 0
 
 Job *jobs[100];
-int job_ids[110];
+int job_ids[100];
 
 void set_fg_pgrp(pid_t pgrp)
 {
@@ -38,6 +38,10 @@ void handler(int sig)
     pid_t chld;
     int status;
 
+    // set_fg_pgrp(0);
+
+    // printf("Parent: entering handler!\n");
+    // printf("Parent: (sig==SIGCHLD): %d!\n",(sig==SIGCHLD));
 
     switch (sig)
     {
@@ -71,13 +75,14 @@ void handler(int sig)
             else
             {
                 /* waited on terminated child */
-                set_fg_pgrp(0);
                 printf("Parent: Child %d else!\n", chld);
+                set_fg_pgrp(0);
             }
         }
         break;
     case SIGTTOU:
-        // printf("SIGTTOU\n");
+        while(tcgetpgrp(STDOUT_FILENO) != getpgrp())
+            pause();
         break;
     default:
         // printf("Other signal\n");
@@ -258,7 +263,6 @@ void execute_tasks(Parse *P, int job_id)
     unsigned int t;
     int fd[2];
     int in, out;
-    void (*sav)(int sig);
 
     in = get_infile(P);
     for (t = 0; t < P->ntasks - 1; t++)
@@ -267,13 +271,7 @@ void execute_tasks(Parse *P, int job_id)
         jobs[job_id]->pids[t] = fork();
 
         setpgid(jobs[job_id]->pids[t], jobs[job_id]->pids[0]);
-        if (jobs[job_id]->pids[t] && P->ntasks == 0)
-        {
-            sav = signal(SIGTTOU, SIG_IGN);
-            tcsetpgrp(STDOUT_FILENO, jobs[job_id]->pids[0]);
-            signal(SIGTTOU, sav);
-        }
-
+        set_fg_pgrp(jobs[job_id]->pids[0]);
         if (!jobs[job_id]->pids[t])
         {
             close(fd[READ_SIDE]);
@@ -288,18 +286,20 @@ void execute_tasks(Parse *P, int job_id)
     out = get_outfile(P);
 
     jobs[job_id]->pids[t] = fork();
-        
+
     setpgid(jobs[job_id]->pids[t], jobs[job_id]->pids[0]);
     set_fg_pgrp(jobs[job_id]->pids[0]);
 
     if (!jobs[job_id]->pids[t])
         run(&P->tasks[t], in, out);
 
-    for (t = 0; t < P->ntasks; t++)
-    {
-        waitpid(jobs[job_id]->pids[t], NULL, 0);
-    }
+    // for (t = 0; t < P->ntasks; t++)
+    // {
+    //     waitpid(jobs[job_id]->pids[t], NULL, 0);
+    // }
     close_safe(in);
+    set_fg_pgrp(0);
+    // printf("Parent: Child %d leader!\n", jobs[job_id]->pids[0]);
 }
 
 int main(int argc, char **argv)
@@ -310,12 +310,12 @@ int main(int argc, char **argv)
     memset(job_ids, 0, 100 * sizeof(int));
 
     signal(SIGCHLD, handler);
-    signal(SIGSTOP, handler);
-    signal(SIGQUIT, handler);
-    signal(SIGTERM, handler);
-    signal(SIGKILL, handler);
+    // signal(SIGSTOP, handler);
+    // signal(SIGQUIT, handler);
+    // signal(SIGTERM, handler);
+    // signal(SIGKILL, handler);
     signal(SIGTTOU, handler);
-    signal(SIGTTIN, handler);
+    // signal(SIGTTIN, handler);s
 
     print_banner();
 
