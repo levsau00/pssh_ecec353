@@ -77,8 +77,10 @@ void handler(int sig)
             {
                 /* child state changed from STOPPED to RUNNING (received SIGCONT) */
                 set_fg_pgrp(0);
-                printf("\n[%d] + continued   %s\n", job_id, jobs[job_id]->name);
-                // printf("\n[%d] + continued   %s\n%s", job_id, jobs[job_id]->name,build_prompt());
+                prompt = build_prompt();
+                printf("\n[%d] + continued   %s\n%s", job_id, jobs[job_id]->name, prompt);
+                free(prompt);
+                fflush(stdout);
             }
             else if (WIFSTOPPED(status))
             {
@@ -86,9 +88,8 @@ void handler(int sig)
                 set_fg_pgrp(0);
                 jobs[job_id]->status = STOPPED;
                 prompt = build_prompt();
-                printf("\n[%d] + suspended   %s\n%s", job_id, jobs[job_id]->name,prompt);
+                printf("\n[%d] + suspended   %s\n%s", job_id, jobs[job_id]->name, prompt);
                 free(prompt);
-                // fflush stdout
                 fflush(stdout);
 
                 // printf("\n[%d] + suspended   %s\n", job_id, jobs[job_id]->name);
@@ -101,11 +102,11 @@ void handler(int sig)
                 jobs[job_id]->completed++;
                 if (jobs[job_id]->completed == jobs[job_id]->npids)
                 {
-                    if(jobs[job_id]->status == BG)
+                    if (jobs[job_id]->status == BG)
                     {
                         prompt = build_prompt();
                         // printf("\n[%d] + done   %s\n", job_id, jobs[job_id]->name);
-                        printf("\n[%d] + done   %s\n%s", job_id, jobs[job_id]->name,prompt);
+                        printf("\n[%d] + done   %s\n%s", job_id, jobs[job_id]->name, prompt);
                         free(prompt);
                         fflush(stdout);
                     }
@@ -119,11 +120,11 @@ void handler(int sig)
                 jobs[job_id]->completed++;
                 if (jobs[job_id]->completed == jobs[job_id]->npids)
                 {
-                    if(jobs[job_id]->status == BG)
+                    if (jobs[job_id]->status == BG)
                     {
                         prompt = build_prompt();
                         // printf("\n[%d] + done   %s\n", job_id, jobs[job_id]->name);
-                        printf("\n[%d] + done   %s\n%s", job_id, jobs[job_id]->name,prompt);
+                        printf("\n[%d] + done   %s\n%s", job_id, jobs[job_id]->name, prompt);
                         free(prompt);
                         fflush(stdout);
                     }
@@ -138,6 +139,7 @@ void handler(int sig)
             }
         }
         break;
+    case SIGTTIN:
     case SIGTTOU:
         while (tcgetpgrp(STDOUT_FILENO) != getpgrp())
             pause();
@@ -157,7 +159,6 @@ void print_banner()
     printf("_  .___//____/ /____/ /_/ /_/  \n");
     printf("/_/ Type 'exit' or ctrl+c to quit\n\n");
 }
-
 
 /* return true if command is found, either:
  *   - a valid fully qualified path was supplied to an existing file
@@ -258,6 +259,11 @@ static int is_possible(Parse *P)
             printf("Exiting...\n");
             exit(EXIT_SUCCESS);
         }
+        if (!strcmp(T->cmd, "jobs"))
+        {
+            builtin_jobs(jobs, job_ids);
+            return 0;
+        }
     }
 
     if (P->infile)
@@ -353,6 +359,7 @@ void execute_tasks(Parse *P, int job_id)
 int main(int argc, char **argv)
 {
     char *cmdline;
+    char *full_cmdline;
     Parse *P;
     int next_id;
     memset(job_ids, 0, 100 * sizeof(int));
@@ -364,19 +371,20 @@ int main(int argc, char **argv)
     // signal(SIGTERM, handler);
     // signal(SIGKILL, handler);
     signal(SIGTTOU, handler);
-    // signal(SIGTTIN, handler);s
+    signal(SIGTTIN, handler);
 
     print_banner();
 
     while (1)
     {
-        // printf("top o while\n");
         cmdline = readline(build_prompt());
+        full_cmdline = malloc(strlen(cmdline) + 1);
+        strcpy(full_cmdline, cmdline);
+
         if (!cmdline) /* EOF (ex: ctrl-d) */
             exit(EXIT_SUCCESS);
-        // printf("cmdline read\n");
         P = parse_cmdline(cmdline);
-        // printf("cmdline parsed\n");
+        
         if (!P)
             goto next;
 
@@ -398,12 +406,10 @@ int main(int argc, char **argv)
         parse_debug(P);
 #endif
 
-        jobs[next_id] = new_job(cmdline, P);
+        jobs[next_id] = new_job(full_cmdline, P);
         execute_tasks(P, next_id);
-        // printf("tasks executed\n");
 
     next:
-        // printf("in next\n");
         parse_destroy(&P);
         free(cmdline);
     }
