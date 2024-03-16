@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
+#include <errno.h>
 
 #include "builtin.h"
 #include "parse.h"
@@ -11,6 +12,7 @@ static char *builtin[] = {
     "exit",  /* exits the shell */
     "which", /* displays full path to command */
     "jobs",  /* lists all jobs */
+    "kill",  /* sends a signal to a process */
     NULL};
 
 int is_builtin(char *cmd)
@@ -64,6 +66,75 @@ char *command_found_builtin(const char *cmd)
     free(PATH);
     return ret;
 }
+
+int is_valid_jobno(int jobno, int *job_ids)
+{
+    if (jobno > -1 && jobno < 100)
+    {
+        if (job_ids[jobno])
+        {
+            return 1;
+        }
+    }
+    printf("pssh: invalid job number: [%d]", jobno);
+    return 0;
+}
+
+
+int builtin_kill(Task T, Job **jobs, int *job_ids)
+{
+    char *help_str = "Usage: kill [-s <signal>] <pid> | %%<job>\n";
+    int sig = 15;
+    int targ_start = 1;
+    int argc = num_args(T);
+    if (argc == 1)
+    {
+        printf(help_str);
+        return 1;
+    }
+    if (!strcmp("-s", T.argv[1]))
+    {
+        if (argc < 4)
+        {
+            printf("Usage: kill [-s <signal>] <pid> | %%<job>\n");
+            return 0;
+        }
+        sig = atoi(T.argv[2]); 
+        if (sig == 0 && strcmp("0", T.argv[2]))
+        {
+            printf("pssh: invalid signal number: [%s]", T.argv[2]);
+            return 0;
+        }
+        if (sig > 31 || sig < 0)
+        {
+            printf("pssh: invalid signal number: [%d]", sig);
+            return 0;
+        }
+        targ_start = 3;
+    }
+    int i,pid,jobno;
+    for (i = targ_start; i < argc; i++)
+    {
+        if (T.argv[i][0] == '%')
+        {
+            jobno = atoi(T.argv[i] + 1);
+            if (!is_valid_jobno(jobno, job_ids))
+                return 0;
+            int j;
+            for (j = 0; j < jobs[jobno]->npids; j++)
+            {
+                kill(jobs[jobno]->pids[j], sig);
+            }
+        }
+        else
+        {
+            pid = atoi(T.argv[i]);
+            kill(pid, sig);
+        }
+    }
+    return 1;
+}
+
 void builtin_jobs(Job **jobs, int *job_ids)
 {
     char *status;
@@ -118,6 +189,10 @@ void builtin_execute(Task T, Job **jobs, int *job_ids)
     else if (!strcmp(T.cmd, "jobs"))
     {
         builtin_jobs(jobs, job_ids);
+    }
+    else if (!strcmp(T.cmd, "kill"))
+    {
+        builtin_kill(T, jobs, job_ids);
     }
     else
     {
