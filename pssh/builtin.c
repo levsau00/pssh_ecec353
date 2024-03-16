@@ -63,6 +63,35 @@ char *command_found_builtin(const char *cmd)
     free(PATH);
     return ret;
 }
+void builtin_jobs(Job **jobs, int *job_ids)
+{
+    char *status;
+
+    int i;
+    for (i = 0; i < 100; i++)
+    {
+
+        if (job_ids[i])
+        {
+        switch (jobs[i]->status)
+        {
+        case STOPPED:
+            status = "Stopped";
+            break;
+        case TERM:
+            status = "Terminated";
+            break;
+        case BG:
+            status = "Running";
+            break;
+        case FG:
+            status = "Running";
+            break;
+        }
+        printf("[%d] + %s    %s\n", i, status, jobs[i]->name);
+    }
+}
+}
 void builtin_execute(Task T)
 {
     char *path;
