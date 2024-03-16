@@ -28,7 +28,6 @@ int next_jid(int *job_ids);
 int find_jid(Job *jobs[], pid_t pid);
 
 void print_bg_job(Job *job, int jid);
-
 void free_job(Job *job);
 void free_job_safe(Job **jobs, Job *job, int *job_ids);
 
