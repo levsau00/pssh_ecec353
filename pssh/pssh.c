@@ -60,12 +60,6 @@ void handler(int sig)
     pid_t chld;
     int status;
     int job_id;
-    char *prompt;
-
-    // set_fg_pgrp(0);
-
-    // printf("Parent: entering handler!\n");
-    // printf("Parent: (sig==SIGCHLD): %d!\n",(sig==SIGCHLD));
 
     switch (sig)
     {
@@ -80,9 +74,7 @@ void handler(int sig)
                 jobs[job_id]->status = BG;
                 if (!(jobs[job_id]->completed++))
                 {
-                    prompt = build_prompt();
-                    printf("\n[%d] + continued   %s\n%s", job_id, jobs[job_id]->name, prompt);
-                    free(prompt);
+                    printf("\n[%d] + continued   %s\n", job_id, jobs[job_id]->name);
                     fflush(stdout);
                 }
                 else if (jobs[job_id]->completed == jobs[job_id]->npids)
@@ -97,9 +89,7 @@ void handler(int sig)
                 jobs[job_id]->status = STOPPED;
                 if (!(jobs[job_id]->suspended++))
                 {
-                    prompt = build_prompt();
-                    printf("\n[%d] + suspended   %s\n%s", job_id, jobs[job_id]->name, prompt);
-                    free(prompt);
+                    printf("\n[%d] + suspended   %s\n", job_id, jobs[job_id]->name);
                     fflush(stdout);
                 }
                 else if (jobs[job_id]->suspended == jobs[job_id]->npids)
@@ -107,8 +97,6 @@ void handler(int sig)
                     jobs[job_id]->suspended = 0;
                 }
 
-                // printf("\n[%d] + suspended   %s\n", job_id, jobs[job_id]->name);
-                // printf(build_prompt());
             }
             else if (WIFEXITED(status))
             {
@@ -119,10 +107,7 @@ void handler(int sig)
                 {
                     if (jobs[job_id]->status == BG)
                     {
-                        prompt = build_prompt();
-                        // printf("\n[%d] + done   %s\n", job_id, jobs[job_id]->name);
-                        printf("\n[%d] + done   %s\n%s", job_id, jobs[job_id]->name, prompt);
-                        free(prompt);
+                        printf("\n[%d] + done   %s\n", job_id, jobs[job_id]->name);
                         fflush(stdout);
                     }
                     free_job_safe(jobs, jobs[job_id], job_ids);
@@ -137,10 +122,7 @@ void handler(int sig)
                 {
                     if (jobs[job_id]->status == BG)
                     {
-                        prompt = build_prompt();
-                        // printf("\n[%d] + done   %s\n", job_id, jobs[job_id]->name);
-                        printf("\n[%d] + done   %s\n%s", job_id, jobs[job_id]->name, prompt);
-                        free(prompt);
+                        printf("\n[%d] + terminated   %s\n", job_id, jobs[job_id]->name);
                         fflush(stdout);
                     }
                     free_job_safe(jobs, jobs[job_id], job_ids);
