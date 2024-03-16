@@ -23,5 +23,6 @@ typedef struct {
 Parse* parse_cmdline (char* cmdline);
 void parse_destroy (Parse** P);
 void parse_debug (Parse* P);
+int num_args(Task T);
 
 #endif /* _parse_h_ */

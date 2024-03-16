@@ -433,6 +433,17 @@ Parse* parse_cmdline (char* cmdline)
     return P;
 }
 
+int num_args(Task T)
+{
+    int ntasks = 0;
+    while (T.argv[ntasks] != NULL)
+    {
+        ntasks++;
+    }
+    return ntasks;
+
+}
+
 
 void parse_debug (Parse* P)
 {
