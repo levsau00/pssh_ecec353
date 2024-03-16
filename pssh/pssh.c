@@ -60,6 +60,7 @@ void handler(int sig)
     pid_t chld;
     int status;
     int job_id;
+    char *prompt;
 
     // set_fg_pgrp(0);
 
@@ -76,14 +77,21 @@ void handler(int sig)
             {
                 /* child state changed from STOPPED to RUNNING (received SIGCONT) */
                 set_fg_pgrp(0);
-                printf("\n[%d] + continued   %s\n%s", job_id, jobs[job_id]->name,build_prompt());
+                printf("\n[%d] + continued   %s\n", job_id, jobs[job_id]->name);
+                // printf("\n[%d] + continued   %s\n%s", job_id, jobs[job_id]->name,build_prompt());
             }
             else if (WIFSTOPPED(status))
             {
                 /* child state changed to STOPPED (received SIGSTOP, SIGTTOU, or SIGTTIN) */
                 set_fg_pgrp(0);
                 jobs[job_id]->status = STOPPED;
-                printf("\n[%d] + suspended   %s\n%s", job_id, jobs[job_id]->name,build_prompt());
+                prompt = build_prompt();
+                printf("\n[%d] + suspended   %s\n%s", job_id, jobs[job_id]->name,prompt);
+                free(prompt);
+                // fflush stdout
+                fflush(stdout);
+
+                // printf("\n[%d] + suspended   %s\n", job_id, jobs[job_id]->name);
                 // printf(build_prompt());
             }
             else if (WIFEXITED(status))
@@ -94,7 +102,13 @@ void handler(int sig)
                 if (jobs[job_id]->completed == jobs[job_id]->npids)
                 {
                     if(jobs[job_id]->status == BG)
-                        printf("\n[%d] + done   %s\n%s", job_id, jobs[job_id]->name,build_prompt());
+                    {
+                        prompt = build_prompt();
+                        // printf("\n[%d] + done   %s\n", job_id, jobs[job_id]->name);
+                        printf("\n[%d] + done   %s\n%s", job_id, jobs[job_id]->name,prompt);
+                        free(prompt);
+                        fflush(stdout);
+                    }
                     free_job_safe(jobs, jobs[job_id], job_ids);
                 }
             }
@@ -106,7 +120,13 @@ void handler(int sig)
                 if (jobs[job_id]->completed == jobs[job_id]->npids)
                 {
                     if(jobs[job_id]->status == BG)
-                        printf("\n[%d] + done   %s\n%s", job_id, jobs[job_id]->name,build_prompt());
+                    {
+                        prompt = build_prompt();
+                        // printf("\n[%d] + done   %s\n", job_id, jobs[job_id]->name);
+                        printf("\n[%d] + done   %s\n%s", job_id, jobs[job_id]->name,prompt);
+                        free(prompt);
+                        fflush(stdout);
+                    }
                     free_job_safe(jobs, jobs[job_id], job_ids);
                 }
             }
@@ -326,7 +346,7 @@ void execute_tasks(Parse *P, int job_id)
     //     waitpid(jobs[job_id]->pids[t], NULL, 0);
     // }
     close_safe(in);
-    set_fg_pgrp(0);
+    // set_fg_pgrp(0);
     // printf("Parent: Child %d leader!\n", jobs[job_id]->pids[0]);
 }
 
