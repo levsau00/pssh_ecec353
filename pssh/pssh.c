@@ -236,7 +236,7 @@ static void run(Task *T, int in, int out)
     redirect(STDOUT_FILENO, out);
 
     if (is_builtin(T->cmd))
-        builtin_execute(*T);
+        builtin_execute(*T, jobs, job_ids);
     else if (command_found(T->cmd))
         execvp(T->cmd, T->argv);
 }
@@ -273,11 +273,6 @@ static int is_possible(Parse *P)
         {
             printf("Exiting...\n");
             exit(EXIT_SUCCESS);
-        }
-        if (!strcmp(T->cmd, "jobs"))
-        {
-            builtin_jobs(jobs, job_ids);
-            return 0;
         }
     }
 

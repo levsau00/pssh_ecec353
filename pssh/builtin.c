@@ -10,6 +10,7 @@
 static char *builtin[] = {
     "exit",  /* exits the shell */
     "which", /* displays full path to command */
+    "jobs",  /* lists all jobs */
     NULL};
 
 int is_builtin(char *cmd)
@@ -73,26 +74,26 @@ void builtin_jobs(Job **jobs, int *job_ids)
 
         if (job_ids[i])
         {
-        switch (jobs[i]->status)
-        {
-        case STOPPED:
-            status = "Stopped";
-            break;
-        case TERM:
-            status = "Terminated";
-            break;
-        case BG:
-            status = "Running";
-            break;
-        case FG:
-            status = "Running";
-            break;
+            switch (jobs[i]->status)
+            {
+            case STOPPED:
+                status = "Stopped";
+                break;
+            case TERM:
+                status = "Terminated";
+                break;
+            case BG:
+                status = "Running";
+                break;
+            case FG:
+                status = "Running";
+                break;
+            }
+            printf("[%d] + %s    %s\n", i, status, jobs[i]->name);
         }
-        printf("[%d] + %s    %s\n", i, status, jobs[i]->name);
     }
 }
-}
-void builtin_execute(Task T)
+void builtin_execute(Task T, Job **jobs, int *job_ids)
 {
     char *path;
     if (!strcmp(T.cmd, "which"))
@@ -113,6 +114,10 @@ void builtin_execute(Task T)
                 }
             }
         }
+    }
+    else if (!strcmp(T.cmd, "jobs"))
+    {
+        builtin_jobs(jobs, job_ids);
     }
     else
     {
