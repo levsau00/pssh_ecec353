@@ -77,20 +77,35 @@ void handler(int sig)
             {
                 /* child state changed from STOPPED to RUNNING (received SIGCONT) */
                 set_fg_pgrp(0);
-                prompt = build_prompt();
-                printf("\n[%d] + continued   %s\n%s", job_id, jobs[job_id]->name, prompt);
-                free(prompt);
-                fflush(stdout);
+                jobs[job_id]->status = BG;
+                if (!(jobs[job_id]->completed++))
+                {
+                    prompt = build_prompt();
+                    printf("\n[%d] + continued   %s\n%s", job_id, jobs[job_id]->name, prompt);
+                    free(prompt);
+                    fflush(stdout);
+                }
+                else if (jobs[job_id]->completed == jobs[job_id]->npids)
+                {
+                    jobs[job_id]->completed = 0;
+                }
             }
             else if (WIFSTOPPED(status))
             {
                 /* child state changed to STOPPED (received SIGSTOP, SIGTTOU, or SIGTTIN) */
                 set_fg_pgrp(0);
                 jobs[job_id]->status = STOPPED;
-                prompt = build_prompt();
-                printf("\n[%d] + suspended   %s\n%s", job_id, jobs[job_id]->name, prompt);
-                free(prompt);
-                fflush(stdout);
+                if (!(jobs[job_id]->suspended++))
+                {
+                    prompt = build_prompt();
+                    printf("\n[%d] + suspended   %s\n%s", job_id, jobs[job_id]->name, prompt);
+                    free(prompt);
+                    fflush(stdout);
+                }
+                else if (jobs[job_id]->suspended == jobs[job_id]->npids)
+                {
+                    jobs[job_id]->suspended = 0;
+                }
 
                 // printf("\n[%d] + suspended   %s\n", job_id, jobs[job_id]->name);
                 // printf(build_prompt());
@@ -384,7 +399,7 @@ int main(int argc, char **argv)
         if (!cmdline) /* EOF (ex: ctrl-d) */
             exit(EXIT_SUCCESS);
         P = parse_cmdline(cmdline);
-        
+
         if (!P)
             goto next;
 

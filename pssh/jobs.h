@@ -16,6 +16,8 @@ typedef struct
     char *name;
     pid_t *pids;
     int completed;
+    int continued;
+    int suspended;
     unsigned int npids;
     pid_t pgid;
     JobStatus status;

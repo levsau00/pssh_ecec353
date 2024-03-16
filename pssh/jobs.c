@@ -13,6 +13,8 @@ Job *new_job(char *name, Parse *P)
     job->npids = P->ntasks;
     job->pids = malloc(sizeof(pid_t) * P->ntasks);
     job->completed = 0;
+    job->continued = 0;
+    job->suspended = 0;
 
     if (P->background)
         job->status = BG;
