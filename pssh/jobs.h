@@ -26,7 +26,6 @@ typedef struct
 Job *new_job(char *name, Parse *P);
 int next_jid(int *job_ids);
 int find_jid(Job *jobs[], pid_t pid);
-int job_done(Job *job);
 
 void print_bg_job(Job *job, int jid);
 
