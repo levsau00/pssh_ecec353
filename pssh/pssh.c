@@ -45,7 +45,7 @@ static char *build_prompt()
 
 void handler(int sig)
 {
-    pid_t chld;
+    pid_t chld, old_fg_pgrp;
     int status;
     int job_id;
 
@@ -58,17 +58,18 @@ void handler(int sig)
             if (WIFCONTINUED(status))
             {
                 /* child state changed from STOPPED to RUNNING (received SIGCONT) */
+                old_fg_pgrp = tcgetpgrp(STDOUT_FILENO);
                 set_fg_pgrp(0);
-                jobs[job_id]->status = BG;
-                if (!(jobs[job_id]->completed++))
+                if (!(jobs[job_id]->continued++))
                 {
                     printf("\n[%d] + continued   %s\n", job_id, jobs[job_id]->name);
                     fflush(stdout);
                 }
-                else if (jobs[job_id]->completed == jobs[job_id]->npids)
+                else if (jobs[job_id]->continued == jobs[job_id]->npids)
                 {
-                    jobs[job_id]->completed = 0;
+                    jobs[job_id]->continued = 0;
                 }
+                set_fg_pgrp(old_fg_pgrp);
             }
             else if (WIFSTOPPED(status))
             {
@@ -309,8 +310,8 @@ void execute_tasks(Parse *P, int job_id)
     {
         pipe(fd);
         jobs[job_id]->pids[t] = fork();
-
         setpgid(jobs[job_id]->pids[t], jobs[job_id]->pids[0]);
+        jobs[job_id]->pgid = getpgid(jobs[job_id]->pids[0]);
         if (!P->background)
             set_fg_pgrp(jobs[job_id]->pids[0]);
 
@@ -323,8 +324,6 @@ void execute_tasks(Parse *P, int job_id)
         close_safe(in);
 
         in = fd[READ_SIDE];
-        // if (!P->background)
-        //     print_bg_job(jobs[job_id], job_id);
     }
 
     out = get_outfile(P);
@@ -363,10 +362,6 @@ int main(int argc, char **argv)
     memset(jobs, 0, 100 * sizeof(Job *));
 
     signal(SIGCHLD, handler);
-    // signal(SIGSTOP, handler);
-    // signal(SIGQUIT, handler);
-    // signal(SIGTERM, handler);
-    // signal(SIGKILL, handler);
     signal(SIGTTOU, handler);
     signal(SIGTTIN, handler);
 

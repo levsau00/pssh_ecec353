@@ -13,6 +13,8 @@ static char *builtin[] = {
     "which", /* displays full path to command */
     "jobs",  /* lists all jobs */
     "kill",  /* sends a signal to a process */
+    "fg",    /* brings a job to the foreground */
+    "bg",    /* sends a job to the background */
     NULL};
 
 int is_builtin(char *cmd)
@@ -76,10 +78,8 @@ int is_valid_jobno(int jobno, int *job_ids)
             return 1;
         }
     }
-    printf("pssh: invalid job number: [%d]", jobno);
     return 0;
 }
-
 
 int builtin_kill(Task T, Job **jobs, int *job_ids)
 {
@@ -99,7 +99,7 @@ int builtin_kill(Task T, Job **jobs, int *job_ids)
             printf("Usage: kill [-s <signal>] <pid> | %%<job>\n");
             return 0;
         }
-        sig = atoi(T.argv[2]); 
+        sig = atoi(T.argv[2]);
         if (sig == 0 && strcmp("0", T.argv[2]))
         {
             printf("pssh: invalid signal number: [%s]", T.argv[2]);
@@ -112,18 +112,25 @@ int builtin_kill(Task T, Job **jobs, int *job_ids)
         }
         targ_start = 3;
     }
-    int i,pid,jobno;
+    int i, pid, jobno;
     for (i = targ_start; i < argc; i++)
     {
         if (T.argv[i][0] == '%')
         {
             jobno = atoi(T.argv[i] + 1);
             if (!is_valid_jobno(jobno, job_ids))
+            {
+                printf("pssh: invalid job number: [%d]", jobno);
                 return 0;
+            }
             int j;
             for (j = 0; j < jobs[jobno]->npids; j++)
             {
                 kill(jobs[jobno]->pids[j], sig);
+            }
+            if(sig == 18)
+            {
+                jobs[jobno]->status = BG;
             }
         }
         else
@@ -164,6 +171,46 @@ void builtin_jobs(Job **jobs, int *job_ids)
         }
     }
 }
+void builtin_fg(Task T, Job **jobs, int *job_ids)
+{
+    int argc = num_args(T);
+    int jobno;
+    if (argc != 2)
+    {
+        printf("Usage: fg %%<job number>\n");
+        // return 1;
+    }
+    jobno = atoi(T.argv[1] + 1);
+    if (T.argv[1][0] != '%')
+    {
+        printf("pssh: invalid job number: [%s]\n", T.argv[1]);
+        // return 0;
+    }
+    else if (!is_valid_jobno(jobno, job_ids))
+    {
+        printf("pssh: invalid job number: [%s]\n", T.argv[1]);
+        // return 0;
+    }
+    else
+    {
+        printf("pssh: fg jobno %d; pgid: %d\n", jobno,jobs[jobno]->pgid);
+        print_bg_job(jobs[jobno], jobno);
+        if(jobs[jobno]->status == STOPPED)
+        {
+            int i;
+            for (i = 0; i < jobs[jobno]->npids; i++)
+            {
+                kill(jobs[jobno]->pids[i], 18);
+            }
+        }
+        // printf("pssh: fg jobno %d\n", jobno);
+        jobs[jobno]->status = FG;
+
+        set_fg_pgrp(getpgid(jobs[jobno]->pids[0]));
+    }
+    // return 1;
+}
+
 void builtin_execute(Task T, Job **jobs, int *job_ids)
 {
     char *path;
@@ -186,13 +233,9 @@ void builtin_execute(Task T, Job **jobs, int *job_ids)
             }
         }
     }
-    else if (!strcmp(T.cmd, "jobs"))
+    else if (!strcmp(T.cmd, "bg"))
     {
-        builtin_jobs(jobs, job_ids);
-    }
-    else if (!strcmp(T.cmd, "kill"))
-    {
-        builtin_kill(T, jobs, job_ids);
+        printf("pssh: builtin command: %s (not implemented!)\n", T.cmd);
     }
     else
     {
