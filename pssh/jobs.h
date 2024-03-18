@@ -30,6 +30,7 @@ int find_jid(Job *jobs[], pid_t pid);
 void print_bg_job(Job *job, int jid);
 void free_job(Job *job);
 void free_job_safe(Job **jobs, Job *job, int *job_ids);
+void set_fg_pgrp(pid_t pgid);
 
 
 #endif /* _jobs_h_ */

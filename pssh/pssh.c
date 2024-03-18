@@ -43,18 +43,6 @@ static char *build_prompt()
     return "$ ";
 }
 
-void set_fg_pgrp(pid_t pgrp)
-{
-    void (*sav)(int sig);
-
-    if (pgrp == 0)
-        pgrp = getpgrp();
-
-    sav = signal(SIGTTOU, SIG_IGN);
-    tcsetpgrp(STDOUT_FILENO, pgrp);
-    signal(SIGTTOU, sav);
-}
-
 void handler(int sig)
 {
     pid_t chld;
@@ -96,7 +84,6 @@ void handler(int sig)
                 {
                     jobs[job_id]->suspended = 0;
                 }
-
             }
             else if (WIFEXITED(status))
             {
@@ -218,7 +205,10 @@ static void run(Task *T, int in, int out)
     redirect(STDOUT_FILENO, out);
 
     if (is_builtin(T->cmd))
+    {
         builtin_execute(*T, jobs, job_ids);
+        free_job_safe(jobs, jobs[find_jid(jobs, getpid())], job_ids);
+    }
     else if (command_found(T->cmd))
         execvp(T->cmd, T->argv);
 }
@@ -255,6 +245,21 @@ static int is_possible(Parse *P)
         {
             printf("Exiting...\n");
             exit(EXIT_SUCCESS);
+        }
+        else if (!strcmp(T->cmd, "jobs"))
+        {
+            builtin_jobs(jobs, job_ids);
+            return 2;
+        }
+        else if (!strcmp(T->cmd, "fg"))
+        {
+            builtin_fg(*T, jobs, job_ids);
+            return 2;
+        }
+        else if (!strcmp(T->cmd, "kill"))
+        {
+            builtin_kill(*T, jobs, job_ids);
+            return 2;
         }
     }
 
@@ -385,7 +390,7 @@ int main(int argc, char **argv)
             printf("pssh: invalid syntax\n");
             goto next;
         }
-        if (!is_possible(P))
+        if (is_possible(P) != 1)
             goto next;
         if ((next_id = next_jid(job_ids)) < 0)
         {

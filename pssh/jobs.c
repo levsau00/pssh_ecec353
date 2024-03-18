@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <signal.h>
+#include <unistd.h>
 
 #include "jobs.h"
 #include "parse.h"
@@ -65,6 +67,18 @@ void print_bg_job(Job *job, int jid)
         printf("%d ", job->pids[i]);
     }
     printf("\n");
+}
+
+void set_fg_pgrp(pid_t pgrp)
+{
+    void (*sav)(int sig);
+
+    if (pgrp == 0)
+        pgrp = getpgrp();
+
+    sav = signal(SIGTTOU, SIG_IGN);
+    tcsetpgrp(STDOUT_FILENO, pgrp);
+    signal(SIGTTOU, sav);
 }
 
 void free_job(Job *job)
