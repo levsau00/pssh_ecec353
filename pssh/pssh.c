@@ -81,7 +81,7 @@ void handler(int sig)
                     printf("\n[%d] + suspended   %s\n", job_id, jobs[job_id]->name);
                     fflush(stdout);
                 }
-                else if (jobs[job_id]->suspended == jobs[job_id]->npids)
+                if (jobs[job_id]->suspended >= jobs[job_id]->npids)
                 {
                     jobs[job_id]->suspended = 0;
                 }
@@ -110,7 +110,7 @@ void handler(int sig)
                 {
                     if (jobs[job_id]->status == BG)
                     {
-                        printf("\n[%d] + terminated   %s\n", job_id, jobs[job_id]->name);
+                        printf("\n[%d] + done   %s\n", job_id, jobs[job_id]->name);
                         fflush(stdout);
                     }
                     free_job_safe(jobs, jobs[job_id], job_ids);
@@ -255,6 +255,11 @@ static int is_possible(Parse *P)
         else if (!strcmp(T->cmd, "fg"))
         {
             builtin_fg(*T, jobs, job_ids);
+            return 2;
+        }
+        else if (!strcmp(T->cmd, "bg"))
+        {
+            builtin_bg(*T, jobs, job_ids);
             return 2;
         }
         else if (!strcmp(T->cmd, "kill"))

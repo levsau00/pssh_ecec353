@@ -11,6 +11,6 @@ void builtin_jobs(Job **jobs, int *job_ids);
 int is_valid_jobno(int jobno, int *job_ids);
 int builtin_kill(Task T, Job **jobs, int *job_ids);
 void builtin_fg(Task T, Job **jobs, int *job_ids);
-int builtin_bg(Task T, Job **jobs, int *job_ids);
+void builtin_bg(Task T, Job **jobs, int *job_ids);
 char *command_found_builtin(const char *cmd);
 #endif /* _builtin_h_ */

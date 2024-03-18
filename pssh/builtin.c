@@ -178,37 +178,62 @@ void builtin_fg(Task T, Job **jobs, int *job_ids)
     if (argc != 2)
     {
         printf("Usage: fg %%<job number>\n");
-        // return 1;
     }
     jobno = atoi(T.argv[1] + 1);
     if (T.argv[1][0] != '%')
     {
         printf("pssh: invalid job number: [%s]\n", T.argv[1]);
-        // return 0;
     }
     else if (!is_valid_jobno(jobno, job_ids))
     {
         printf("pssh: invalid job number: [%s]\n", T.argv[1]);
-        // return 0;
     }
     else
     {
-        printf("pssh: fg jobno %d; pgid: %d\n", jobno,jobs[jobno]->pgid);
-        print_bg_job(jobs[jobno], jobno);
+        // printf("pssh: fg jobno %d; pgid: %d\n", jobno,jobs[jobno]->pgid);
         if(jobs[jobno]->status == STOPPED)
         {
+            jobs[jobno]->status = FG;
             int i;
             for (i = 0; i < jobs[jobno]->npids; i++)
             {
                 kill(jobs[jobno]->pids[i], 18);
             }
         }
-        // printf("pssh: fg jobno %d\n", jobno);
-        jobs[jobno]->status = FG;
 
         set_fg_pgrp(getpgid(jobs[jobno]->pids[0]));
     }
-    // return 1;
+}
+
+void builtin_bg(Task T, Job **jobs, int *job_ids)
+{
+    int argc = num_args(T);
+    int jobno;
+    if (argc != 2)
+    {
+        printf("Usage: bg %%<job number>\n");
+    }
+    jobno = atoi(T.argv[1] + 1);
+    if (T.argv[1][0] != '%')
+    {
+        printf("pssh: invalid job number: [%s]\n", T.argv[1]);
+    }
+    else if (!is_valid_jobno(jobno, job_ids))
+    {
+        printf("pssh: invalid job number: [%s]\n", T.argv[1]);
+    }
+    else
+    {
+        if(jobs[jobno]->status == STOPPED)
+        {
+            jobs[jobno]->status = BG;   
+            int i;
+            for (i = 0; i < jobs[jobno]->npids; i++)
+            {
+                kill(jobs[jobno]->pids[i], 18);
+            }
+        }
+    }
 }
 
 void builtin_execute(Task T, Job **jobs, int *job_ids)
