@@ -6,7 +6,7 @@
 **/*.o
 pssh
 .vscode
-
+*job_info*
 
 !README.txt
 !**/run
