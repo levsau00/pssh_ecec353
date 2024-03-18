@@ -155,16 +155,16 @@ void builtin_jobs(Job **jobs, int *job_ids)
             switch (jobs[i]->status)
             {
             case STOPPED:
-                status = "Stopped";
+                status = "stopped";
                 break;
             case TERM:
-                status = "Terminated";
+                status = "terminated";
                 break;
             case BG:
-                status = "Running";
+                status = "running";
                 break;
             case FG:
-                status = "Running";
+                status = "running";
                 break;
             }
             printf("[%d] + %s    %s\n", i, status, jobs[i]->name);
@@ -190,7 +190,6 @@ void builtin_fg(Task T, Job **jobs, int *job_ids)
     }
     else
     {
-        // printf("pssh: fg jobno %d; pgid: %d\n", jobno,jobs[jobno]->pgid);
         if(jobs[jobno]->status == STOPPED)
         {
             jobs[jobno]->status = FG;
