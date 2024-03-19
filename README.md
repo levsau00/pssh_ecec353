@@ -1,6 +1,6 @@
 # Project 2
 ## ECEC 353 Systems Programming
-## Lev Saunders ***REMOVED***
+## Lev Saunders
 
 ### How To Compile & Run
 ====================  
